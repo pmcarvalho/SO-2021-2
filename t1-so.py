@@ -50,7 +50,9 @@ class ES:
         if(dispositivo != 1):
             print("Operação ilegal!")
             return 
+        
         mem.mem_escreve(valor, novo)
+        print("Print do ES:" + str(mem.mem_le(valor)))
         return 
         
 
