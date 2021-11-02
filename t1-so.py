@@ -15,19 +15,21 @@ class Memory:
     def mem_tam(self):
         return len(self.lis)
 
-    def mem_le(self,pos):
+    def mem_le(self,pos,state):
         try:
             return self.lis[pos]
         except:
-            print("Acesso a endereço de memória inválido!")
+            state.modo = "ERR_MEM_END_INV"
+            state.comp = str(pos)
             return 1
 
-    def mem_escreve(self,pos,novo):
+    def mem_escreve(self,pos,novo,state):
         try:
             self.lis[pos] = novo
             return 0
         except:
-            print("Acesso a endereço de memória inválido!")
+            state.modo = "ERR_MEM_END_INV"
+            state.comp = str(pos)
             return 1
 
     def mem_destroy(self):
@@ -40,19 +42,23 @@ class ES:
     
     #teclado = 0 terminal = 1
 
-    def es_le(self, dispositivo, mem, valor):
-        if(dispositivo != 0):
-            print("Operação ilegal!")
-            return 
-        return mem.mem_le(valor)
+    def es_le(self, dispositivo):
 
-    def es_escreve(self, dispositivo, mem, valor, novo):
-        if(dispositivo != 1):
-            print("Operação ilegal!")
-            return 
+        if(dispositivo == 1):
+            return "ERR_ES_OP_INV"
+        elif(dispositivo != 0 and dispositivo != 1):
+            return "ERR_ES_DISP_INV"
+
+        return input("Digite o valor a ser lido:")
+
+    def es_escreve(self, dispositivo, valor):
+
+        if(dispositivo == 0):
+            return "ERR_ES_OP_INV"
+        elif(dispositivo != 0 and dispositivo != 1):
+            return "ERR_ES_DISP_INV"
         
-        mem.mem_escreve(valor, novo)
-        print("Print do ES:" + str(mem.mem_le(valor)))
+        print("Print do ES:" + str(valor))
         return 
         
 
@@ -115,12 +121,19 @@ class CPU:
     def cpu_executa(self):
         pc = self.state.pc
         if(pc >= tam):
-            self.state.modo = 1
-            self.state.comp = "Acesso a endereço de memória inválido!"
-        codigo = self.mem.mem_le(pc)
+            self.state.modo = "ERR_MEM_END_INV"
+            self.state.comp = str(pc)
+
+        temp = self.mem.mem_le(pc, self.state)  
+        if(temp == 1):
+            return 1
+        codigo = temp
+        
+
         a = self.state.acu
         if(pc+1 < tam): 
-            a1 = self.mem.mem_le(pc + 1)
+            a1 = self.mem.mem_le(pc + 1, self.state)
+
         x = self.state.aux
 
         if codigo == 0:
@@ -139,22 +152,30 @@ class CPU:
             return 0
         elif codigo == 3:
             # CARGM carrega da memória
-            self.state.acu = self.mem.mem_le(a1)
+            temp = self.mem.mem_le(a1, self.state)
+            if(temp == 1):
+                return 1
+            self.state.acu = temp
             self.state.pc += 2
             return 0
         elif codigo == 4:
             # CARGX carrega indexado
-            self.state.acu = self.mem.mem_le(a1 + x)
+            temp = self.mem.mem_le(a1 + x, self.state)
+            if(temp == 1):
+                return 1
+            self.state.acu = temp
             self.state.pc += 2
             return 0
         elif codigo == 5:
             # ARMM armazena na memória
-            self.mem.mem_escreve(a1, a)
+            if(self.mem.mem_escreve(a1, a, self.state) == 1):
+                return 1
             self.state.pc += 2
             return 0
         elif codigo == 6:
             # ARMX armazena indexado
-            self.mem.mem_escreve(a1 + x, a)
+            if(self.mem.mem_escreve(a1 + x, a, self.state) == 1):
+                return 1
             self.state.pc += 2
             return 0
         elif codigo == 7:
@@ -180,28 +201,43 @@ class CPU:
             
         elif codigo == 10:
             # SOMA 	soma
-            self.state.acu += self.mem.mem_le(a1)
+            temp = self.mem.mem_le(a1, self.state)
+            if(temp == 1):
+                return 1
+            self.state.acu += temp
             self.state.pc += 2
             return 0
         elif codigo == 11:
             # SUB subtração
-            self.state.acu -= self.mem.mem_le(a1)
+            temp = self.mem.mem_le(a1, self.state)
+            if(temp == 1):
+                return 1
+            self.state.acu -= temp
             self.state.pc += 2
             return 0
         elif codigo == 12:
             # MULT multiplicação
-            self.state.acu *= self.mem.mem_le(a1)
+            temp = self.mem.mem_le(a1, self.state)
+            if(temp == 1):
+                return 1
+            self.state.acu *= temp
             self.state.pc += 2
             return 0
         elif codigo == 13:
             # DIV divisão
-            self.state.acu /= self.mem.mem_le(a1)
+            temp = self.mem.mem_le(a1, self.state)
+            if(temp == 1):
+                return 1
+            self.state.acu /= temp
             self.state.acu = int(self.state.acu)
             self.state.pc += 2
             return 0
         elif codigo == 14:
             # RESTO resto
-            self.state.acu %= self.mem.mem_le(a1)
+            temp = self.mem.mem_le(a1, self.state)
+            if(temp == 1):
+                return 1
+            self.state.acu %= temp
             self.state.pc += 2
             return 0
         elif codigo == 15:
@@ -229,20 +265,29 @@ class CPU:
             return 0
         elif codigo == 19:
             # LE leitura de E/S
-            self.state.acu = self.es.es_le(0,self.mem,a1)
+            temp = self.es.es_le(a1)
+            if(temp == "ERR_ES_OP_INV" or temp == "ERR_ES_DISP_INV"):
+                self.state.modo = temp
+                self.state.comp = "Dispositivo:" + str(a1)
+                return 1
+            self.state.acu = temp
             self.state.pc += 2
             return 0
         elif codigo == 20:
             # ESCR escrita de E/S
-            self.es.es_escreve(1,self.mem,a1,a)
+            temp = self.es.es_escreve(a1,a)
+            if(temp == "ERR_ES_OP_INV" or temp == "ERR_ES_DISP_INV"):
+                self.state.modo = temp
+                self.state.comp = "Dispositivo:" + str(a1)
+                return 1
             self.state.pc += 2
             return 0
         elif codigo == None:
-            self.state.modo = 1
+            self.state.modo = "ERR_CPU_INSTR_INV"
             self.state.comp = "Código nulo!"
             return 1
         else:
-            self.state.modo = 1
+            self.state.modo = "ERR_CPU_INSTR_INV"
             self.state.comp = "Código inválido!"
         
 
@@ -259,7 +304,7 @@ cpu.mem.set_list(progr)
 
 while True:
     cpu.state.imprime_estado()
-    err = cpu.cpu_executa() #Retorna 0 se o programa vai seguir executando, 1 se deu erro, 2 se foi bem sucedido
+    err = cpu.cpu_executa()
     
     if err != 0:
         print("Código de saída:" + str(err))
