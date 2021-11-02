@@ -259,7 +259,7 @@ cpu.mem.set_list(progr)
 
 while True:
     cpu.state.imprime_estado()
-    err = cpu.cpu_executa()
+    err = cpu.cpu_executa() #Retorna 0 se o programa vai seguir executando, 1 se deu erro, 2 se foi bem sucedido
     
     if err != 0:
         print("Código de saída:" + str(err))
